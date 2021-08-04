@@ -1,0 +1,23 @@
+{
+  "name": "harry-the-h-pawn",
+  "version": "0.0.1",
+  "description": "discord chess bot",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asteriskman7/harry-the-h-pawn.git"
+  },
+  "author": "asterisk_man",
+  "license": "GPL-3.0-only",
+  "bugs": {
+    "url": "https://github.com/asteriskman7/harry-the-h-pawn/issues"
+  },
+  "homepage": "https://github.com/asteriskman7/harry-the-h-pawn#readme",
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "dotenv": "^10.0.0"
+  }
+}
