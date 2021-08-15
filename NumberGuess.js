@@ -6,7 +6,7 @@ const { Game } = require('./Game');
 exports.NumberGuess = class extends Game {
   constructor(id, db, args) {
     super(id, db, args, [ 
-      {name: 'minVal', default: 0, map: parseInt},
+      {name: 'minVal', default: 1, map: parseInt},
       {name: 'maxVal', default: 100, map: parseInt}
     ]);
 
@@ -14,7 +14,7 @@ exports.NumberGuess = class extends Game {
       this.setupError += `Must have at least 1 player. `;
     }
 
-    if (this.gameOptions.minVal >= this.gameOptions.maxVal) {
+    if (this.state.gameOptions.minVal >= this.state.gameOptions.maxVal) {
       this.setupError += `minVal must be less than maxVal. `;
     }
 
@@ -26,18 +26,20 @@ exports.NumberGuess = class extends Game {
     return `A random number will be chosen. Players take turns guessing the ` +
     `number.
 Options:
-  maxVal: maximum random value. Default = 100`;
+  minVal: Minimum random value. Default = 1
+  maxVal: Maximum random value. Default = 100`;
   }
 
   loadState() { 
     //get state from db or initialize
-    db.get(`${this.id},state`, (err, res) => {
+    this.db.get(`${this.id},state`, (err, res) => {
       if (err || (res === null)) {
         //init
         this.state = {
-          number: Math.floor(Math.random() * (this.maxVal - this.minVal) + this.minVal),
+          number: Math.floor(Math.random() * (1 + this.state.gameOptions.maxVal - this.state.gameOptions.minVal) + this.state.gameOptions.minVal),
           playerTurn: 0
         }
+        this.saveState();
       } else {
         //load
         this.state = JSON.parse(res);
@@ -48,7 +50,7 @@ Options:
 
   saveState() { 
     //convert game state into save object and save in db
-    db.set(`${this.id},state`, JSON.stringify(this.state));
+    this.db.set(`${this.id},state`, JSON.stringify(this.state));
   }
 
   takeTurn(playerIndex, turn) { 
@@ -61,8 +63,10 @@ Options:
     const guess = parseInt(turn);
 
     if (guess === this.state.number) {
+      this.saveState();
       return {over: true, responses: [{type: 'text', content: 'Correct!'}]};
     } else {
+      this.saveState();
       const msg = guess < this.state.number ? 'Too low' : 'Too high';
       return {over: false, responses: [{type: 'text', content: msg}]};
     }

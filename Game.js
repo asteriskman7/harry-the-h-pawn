@@ -11,28 +11,34 @@ exports.Game = class {
     //return message to send with initial game state
     this.id = id;
     this.db = db;
-    const [playerString, gameOptions] = args;
-    this.playerList = playerString.split`,`;
-    this.gameOptions = {};
-    gameOptions.split`,`.forEach( v => {
-      const [key, value] = v.split`=`;
-      this.gameOptions[key] = value;
-    });
+    const optionsMatch = args.match(/\((.*)\)/);
+    const gameOptions = optionsMatch === null ? undefined : optionsMatch[1].trim();
+    const playerMatch = args.match(/[^(]*/);
+    const playerString = playerMatch[0].trim();
+    this.playerList = playerString.split` `;
+    this.state = {};
+    this.state.gameOptions = {};
+    if (gameOptions !== undefined) {
+      gameOptions.split`,`.forEach( v => {
+        const [key, value] = v.split`=`;
+        this.state.gameOptions[key] = value;
+      });
+    }
 
     //set this to a non empty string if there is some config problem 
     this.setupError = "";
  
     argInfo.forEach( v => {
-      const passedValue = this.gameOptions[v.name];
+      const passedValue = this.state.gameOptions[v.name];
       if (passedValue !== undefined) {
         const val = v.map(passedValue);
         if (isNaN(val) || val === undefined) {
           this.setupError += `Invalid value for ${v.name} option. `;
         } else {
-          this.gameOptions[v.name] = val;
+          this.state.gameOptions[v.name] = val;
         }
       } else {
-        this.gameOptions[v.name] = v.default;
+        this.state.gameOptions[v.name] = v.default;
       }
     });
 

@@ -50,32 +50,36 @@ const cmdHandlers = new Map();
 
 cmdHandlers.set('new', {
   cmd: (message, args) => {
-    const gameClass = gameMap.get(args[0]);
+    const gameName = args.split` `[0];
+    const gameClass = gameMap.get(gameName);
     if (gameClass === undefined) {
       message.channel.send('Unrecognized game name');
     } else {
       //get users list
-      console.log(message.content);
       const users = [...message.content.matchAll(/<@!?(\d+)>/g)].map( v => v[1] );
-      console.log(users);
-      return;
       //create new discord thread 
-      const threadName = args.join` `;
+      const threadName = message.cleanContent.split` `.slice(2).join` `;
       message.channel.threads.create({
         name: threadName,
         autoArchiveDuration: 60, //minutes
         reason: message.content
       }).then( threadChannel => {
         //start new game
-        const game = new gameClass(threadChannel.id, db, args.slice(1));
+        const gameArgs = args.match(/ (.*)/)[1];
+        const game = new gameClass(threadChannel.id, db, gameArgs);
         gameUsers.set(threadChannel.id, users);
         gameTurn.set(threadChannel.id, 0);
         threadMap.set(threadChannel.id, game);
-        threadChannel.send('welcome to game thread');
+        const mentionString = users.map( v => `<@${v}>` ).join` `;
+        const firstMsg = 'New game: ' + message.content.split` `.slice(2).join` ` +
+        `\nYour turn <@${users[0]}>!`;
+        threadChannel.send(firstMsg);
       });
     }
   },
-  help: `new <gameName> <player list> [game options]: `
+  help: `new <gameName> <playerList> ([gameOptions]): Start new game of gameName. 
+playerList is space separated mentions of players.
+gameOptions is comma separated key=value pairs surrounded by parenthesis.`
 });
 
 cmdHandlers.set('listGames', {
@@ -95,7 +99,7 @@ cmdHandlers.set('listGames', {
 
 cmdHandlers.set('gameHelp', {
   cmd: (message, args) => {
-    const gameClass = gameMap.get(args[0]);
+    const gameClass = gameMap.get(args);
     if (gameClass === undefined) {
       message.channel.send('Unrecognized game name');
     } else {
@@ -139,22 +143,40 @@ client.on('messageCreate', message => {
   if (message.author.bot) {return;}
     
   //if in the cmd channel
+  const cmdList = message.content.split` `;
   if (message.channel.name === process.env.CMD_CHANNEL) {
     console.log('process cmd');
-    const cmdList = message.content.split` `;
-    if (cmdList[0] !== 'harry') {return;}
+    if (cmdList[0] !== process.env.PREFIX_CMD) {return;}
     
     const cmd = cmdList[1];
     const args = cmdList.slice(2);
 
     if (cmdHandlers.has(cmd)) {
-      cmdHandlers.get(cmd).cmd(message, args);
+      cmdHandlers.get(cmd).cmd(message, args.join` `);
     } else {
       message.channel.send('Unrecognized command.');
     }
 
   } else {
-    console.log('check channel');
+    if (cmdList[0] !== process.env.PREFIX_THREAD) {return;}
+    const threadGame = threadMap.get(message.channel.id);
+    if (threadGame === undefined) {return;}
+    
+    const gameTurnIndex = gameTurn.get(message.channel.id);
+    const turnResponse = threadGame.takeTurn(gameTurnIndex, cmdList.slice(1).join` `);
+
+    //print responses
+    message.channel.send(turnResponse.responses[0].content).then( () => {
+      if (!turnResponse.over) {
+        const turnUserId = gameUsers.get(message.channel.id)[gameTurn.get(message.channel.id)];
+        message.channel.send(`Your turn <@${turnUserId}>!`);
+      }
+    });
+
+    //ping next player
+
+    const nextTurn = (gameTurnIndex + 1) % gameUsers.get(message.channel.id).length;
+    gameTurn.set(message.channel.id, nextTurn);
   }
 
   /*
