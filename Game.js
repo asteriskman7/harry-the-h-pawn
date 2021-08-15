@@ -5,13 +5,41 @@
   won't necessarily do a lot other than standardizing interface
 */
 
-class Game {
-  constructor(gameid, db, gameOptionsString) {
+exports.Game = class {
+  constructor(id, db, args, argInfo) {
     //init game and store options
     //return message to send with initial game state
-    this.gameid = gameid;
+    this.id = id;
     this.db = db;
-    return {responses: [{ type: 'text', content: 'Game started' }]};
+    const [playerString, gameOptions] = args;
+    this.playerList = playerString.split`,`;
+    this.gameOptions = {};
+    gameOptions.split`,`.forEach( v => {
+      const [key, value] = v.split`=`;
+      this.gameOptions[key] = value;
+    });
+
+    //set this to a non empty string if there is some config problem 
+    this.setupError = "";
+ 
+    argInfo.forEach( v => {
+      const passedValue = this.gameOptions[v.name];
+      if (passedValue !== undefined) {
+        const val = v.map(passedValue);
+        if (isNaN(val) || val === undefined) {
+          this.setupError += `Invalid value for ${v.name} option. `;
+        } else {
+          this.gameOptions[v.name] = val;
+        }
+      } else {
+        this.gameOptions[v.name] = v.default;
+      }
+    });
+
+  }
+
+  static getHelp() {
+    //return help string including info about game options 
   }
 
   loadState() { 
@@ -22,13 +50,8 @@ class Game {
     //convert game state into save object and save in db
   }
 
-  isGameOver() { 
-    //return game over state and if game is over final message
-    return { over: true, responses: [{type: 'text', content: 'Game over'}]};
-  }
-
   takeTurn(playerIndex, turn) { 
-    //return game state message
-    return {responses [{ type: 'text', content: 'Turn taken'}]};
+    //return game over state and game state messages
+    return {over: false, responses: [{ type: 'text', content: 'Turn taken'}]};
   }
 }
