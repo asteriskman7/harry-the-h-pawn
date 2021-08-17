@@ -35,10 +35,8 @@ Options:
     this.db.get(`${this.id},state`, (err, res) => {
       if (err || (res === null)) {
         //init
-        this.state = {
-          number: Math.floor(Math.random() * (1 + this.state.gameOptions.maxVal - this.state.gameOptions.minVal) + this.state.gameOptions.minVal),
-          playerTurn: 0
-        }
+        this.state.number = Math.floor(Math.random() * (1 + this.state.gameOptions.maxVal - this.state.gameOptions.minVal) + this.state.gameOptions.minVal);
+        this.state.playerTurn = 0;
         this.saveState();
       } else {
         //load
@@ -54,6 +52,10 @@ Options:
   }
 
   takeTurn(playerIndex, turn) { 
+    if (this.state.over) {
+      return {over: true, responses: [{type: 'text', content: 'The game is already over'}]};
+    }
+
     if (!playerIndex === this.state.playerTurn) {
       return {over: false, responses: [{type: 'text', content: 'Not your turn'}]};
     }
@@ -63,12 +65,13 @@ Options:
     const guess = parseInt(turn);
 
     if (guess === this.state.number) {
+      this.state.over = true;
       this.saveState();
       return {over: true, responses: [{type: 'text', content: 'Correct!'}]};
     } else {
       this.saveState();
       const msg = guess < this.state.number ? 'Too low' : 'Too high';
-      return {over: false, responses: [{type: 'text', content: msg}]};
+      return {over: false, responses: [{type: 'text', content: msg}, {type: 'text', content: 'keep trying!'}]};
     }
   }
 }
