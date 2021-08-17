@@ -16,7 +16,7 @@ exports.Game = class {
     const playerMatch = args.match(/[^(]*/);
     const playerString = playerMatch[0].trim();
     this.playerList = playerString.split` `;
-    this.state = {};
+    this.state = {over: false};
     this.state.gameOptions = {};
     if (gameOptions !== undefined) {
       gameOptions.split`,`.forEach( v => {
