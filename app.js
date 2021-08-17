@@ -26,7 +26,25 @@ const db = redis.createClient({
 //when db is ready, connect to discord
 db.on('ready', () => {
   console.log('DB ready');
-  client.login(process.env.BOT_TOKEN);
+
+  //create a game object for saved games
+  db.hgetall('gameInfo', (err, reply) => {
+    //reply is an object
+    if (err === null && reply !== null) {
+      console.log('Loading games in progress.');
+      Object.keys(reply).forEach( threadID => {
+        const info = JSON.parse(reply[threadID]);
+        const gameName = info.name;
+        const gameClass = gameMap.get(gameName);
+        if (gameClass === undefined) {return;}
+
+        const game = new gameClass(threadID, db, [], '');
+        threadMap.set(threadID, game);
+      });
+    }
+
+    client.login(process.env.BOT_TOKEN);
+  });
 });
 
 client.once('ready', () => {
@@ -35,8 +53,6 @@ client.once('ready', () => {
 
 //map of thread ids to game objects
 const threadMap = new Map();
-//map of thread ids to user id lists
-const gameUsers = new Map();
 //map of thread ids to users turn indexes
 const gameTurn = new Map();
 
@@ -67,9 +83,10 @@ cmdHandlers.set('new', {
       })
 
       //start new game
+      //save game name and user list so games can be recreated
+      db.hset("gameInfo", threadChannel.id, JSON.stringify({name: gameName, users}));
       const gameArgs = args.match(/ (.*)/)[1];
-      const game = new gameClass(threadChannel.id, db, gameArgs);
-      gameUsers.set(threadChannel.id, users);
+      const game = new gameClass(threadChannel.id, db, users, gameArgs);
       gameTurn.set(threadChannel.id, 0);
       threadMap.set(threadChannel.id, game);
       const mentionString = users.map( v => `<@${v}>` ).join` `;
@@ -163,8 +180,7 @@ client.on('messageCreate', async message => {
     const threadGame = threadMap.get(message.channel.id);
     if (threadGame === undefined) {return;}
     
-    const gameTurnIndex = gameTurn.get(message.channel.id);
-    const turnResponse = threadGame.takeTurn(gameTurnIndex, cmdList.slice(1).join` `);
+    const turnResponse = threadGame.takeTurn(message.author.id, cmdList.slice(1).join` `);
 
     //print responses
     while (turnResponse.responses.length > 0) {
@@ -173,62 +189,10 @@ client.on('messageCreate', async message => {
     }
 
     if (!turnResponse.over) {
-      const turnUserId = gameUsers.get(message.channel.id)[gameTurn.get(message.channel.id)];
-      message.channel.send(`Your turn <@${turnUserId}>!`);
-    }
-
-    //ping next player
-
-    const nextTurn = (gameTurnIndex + 1) % gameUsers.get(message.channel.id).length;
-    gameTurn.set(message.channel.id, nextTurn);
-  }
-
-  /*
-  //if in a game channel dispatch msg to game
-
-  console.log(message.content);
-
-  console.log('message is ' + (message.channel.isThread() ? '' : 'not ') + 'from a thread');
-  console.log('channel name is', message.channel.name);
-  console.log('channel id is', message.channel.id);
-
-  const gID = '226365635280633856';
-  const tID = '873337922496131152';
-
-  //const gchannel = message.guild.channels.fetch(gID.toString()).then( c => c.send('general msg'));
-  //const tchannel = message.guild.channels.fetch(tID.toString()).then( c => c.send('thread msg'));
-
-  if (message.content === 'send') {
-    message.guild.channels.cache.get(gID).send('general msg');
-  }
-  if (message.content === 'send2') {
-    message.guild.channels.cache.get(tID).send('thread msg');
-  }
-  if (message.content === 'archive') {
-    if (message.channel.isThread()) {
-      message.channel.setArchived(true);
     }
   }
-  if (message.content === 'delete') {
-    if (message.channel.isThread()) {
-      message.channel.delete('done');
-    }
-  }
-  */
-  /*
-  if (message.content === 'make') {
-    //message.channel.send('TMP');
-    message.channel.threads.create({
-      name: 'thread-test',
-      autoArchiveDuration: 60, //minutes
-      reason: 'This is a thread test reason'
-    });
-  }
-  */
+
 });
-
-
-
 
 
 /*

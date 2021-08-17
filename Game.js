@@ -6,7 +6,7 @@
 */
 
 exports.Game = class {
-  constructor(id, db, args, argInfo) {
+  constructor(id, db, users, args, argInfo) {
     //init game and store options
     //return message to send with initial game state
     this.id = id;
@@ -16,7 +16,7 @@ exports.Game = class {
     const playerMatch = args.match(/[^(]*/);
     const playerString = playerMatch[0].trim();
     this.playerList = playerString.split` `;
-    this.state = {over: false};
+    this.state = {over: false, users};
     this.state.gameOptions = {};
     if (gameOptions !== undefined) {
       gameOptions.split`,`.forEach( v => {

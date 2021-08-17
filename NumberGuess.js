@@ -4,8 +4,8 @@ const { Game } = require('./Game');
 
 
 exports.NumberGuess = class extends Game {
-  constructor(id, db, args) {
-    super(id, db, args, [ 
+  constructor(id, db, users, args) {
+    super(id, db, users, args, [ 
       {name: 'minVal', default: 1, map: parseInt},
       {name: 'maxVal', default: 100, map: parseInt}
     ]);
@@ -51,12 +51,12 @@ Options:
     this.db.set(`${this.id},state`, JSON.stringify(this.state));
   }
 
-  takeTurn(playerIndex, turn) { 
+  takeTurn(playerID, turn) { 
     if (this.state.over) {
       return {over: true, responses: [{type: 'text', content: 'The game is already over'}]};
     }
 
-    if (!playerIndex === this.state.playerTurn) {
+    if (!(playerID === this.state.users[this.state.playerTurn])) {
       return {over: false, responses: [{type: 'text', content: 'Not your turn'}]};
     }
 
@@ -71,7 +71,9 @@ Options:
     } else {
       this.saveState();
       const msg = guess < this.state.number ? 'Too low' : 'Too high';
-      return {over: false, responses: [{type: 'text', content: msg}, {type: 'text', content: 'keep trying!'}]};
+      const nextPlayerID = this.state.users[this.state.playerTurn];
+      return {over: false, responses: [{type: 'text', content: msg}, 
+        {type: 'text', content: `Your turn <@${nextPlayerID}>`}]};
     }
   }
 }
