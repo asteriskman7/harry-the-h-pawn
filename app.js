@@ -49,7 +49,7 @@ gameMap.set('numberGuess', NumberGuess);
 const cmdHandlers = new Map();
 
 cmdHandlers.set('new', {
-  cmd: (message, args) => {
+  cmd: async (message, args) => {
     const gameName = args.split` `[0];
     const gameClass = gameMap.get(gameName);
     if (gameClass === undefined) {
@@ -59,22 +59,23 @@ cmdHandlers.set('new', {
       const users = [...message.content.matchAll(/<@!?(\d+)>/g)].map( v => v[1] );
       //create new discord thread 
       const threadName = message.cleanContent.split` `.slice(2).join` `;
-      message.channel.threads.create({
+
+      const threadChannel = await message.channel.threads.create({
         name: threadName,
         autoArchiveDuration: 60, //minutes
         reason: message.content
-      }).then( threadChannel => {
-        //start new game
-        const gameArgs = args.match(/ (.*)/)[1];
-        const game = new gameClass(threadChannel.id, db, gameArgs);
-        gameUsers.set(threadChannel.id, users);
-        gameTurn.set(threadChannel.id, 0);
-        threadMap.set(threadChannel.id, game);
-        const mentionString = users.map( v => `<@${v}>` ).join` `;
-        const firstMsg = 'New game: ' + message.content.split` `.slice(2).join` ` +
-        `\nYour turn <@${users[0]}>!`;
-        threadChannel.send(firstMsg);
-      });
+      })
+
+      //start new game
+      const gameArgs = args.match(/ (.*)/)[1];
+      const game = new gameClass(threadChannel.id, db, gameArgs);
+      gameUsers.set(threadChannel.id, users);
+      gameTurn.set(threadChannel.id, 0);
+      threadMap.set(threadChannel.id, game);
+      const mentionString = users.map( v => `<@${v}>` ).join` `;
+      const firstMsg = 'New game: ' + message.content.split` `.slice(2).join` ` +
+      `\nYour turn <@${users[0]}>!`;
+      threadChannel.send(firstMsg);
     }
   },
   help: `new <gameName> <playerList> ([gameOptions]): Start new game of gameName. 
@@ -135,7 +136,7 @@ Commands:`;
 );
 
 //handle discord messages
-client.on('messageCreate', message => {
+client.on('messageCreate', async message => {
   //does it now include messages from itself?
 
 
@@ -166,12 +167,15 @@ client.on('messageCreate', message => {
     const turnResponse = threadGame.takeTurn(gameTurnIndex, cmdList.slice(1).join` `);
 
     //print responses
-    message.channel.send(turnResponse.responses[0].content).then( () => {
-      if (!turnResponse.over) {
-        const turnUserId = gameUsers.get(message.channel.id)[gameTurn.get(message.channel.id)];
-        message.channel.send(`Your turn <@${turnUserId}>!`);
-      }
-    });
+    while (turnResponse.responses.length > 0) {
+      await message.channel.send(turnResponse.responses[0].content);
+      turnResponse.responses.shift();
+    }
+
+    if (!turnResponse.over) {
+      const turnUserId = gameUsers.get(message.channel.id)[gameTurn.get(message.channel.id)];
+      message.channel.send(`Your turn <@${turnUserId}>!`);
+    }
 
     //ping next player
 
