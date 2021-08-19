@@ -54,6 +54,7 @@ exports.Game = class {
 
   saveState() { 
     //convert game state into save object and save in db
+    this.db.set(`${this.id},state`, JSON.stringify(this.state));
   }
 
   takeTurn(playerIndex, turn) { 
