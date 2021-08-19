@@ -11,6 +11,7 @@ const {Client, Intents, MessageAttachment, ThreadManager } = require('discord.js
 const { createCanvas } = require('canvas');
 
 const { NumberGuess } = require('./NumberGuess');
+const { TicTacToe } = require('./TicTacToe');
 
 //get config from .env file
 dotenv.config();
@@ -60,6 +61,7 @@ const gameTurn = new Map();
 const gameMap = new Map();
 
 gameMap.set('numberGuess', NumberGuess);
+gameMap.set('tictactoe', TicTacToe);
 
 //setup handlers for commands in command channel
 const cmdHandlers = new Map();
@@ -184,7 +186,17 @@ client.on('messageCreate', async message => {
 
     //print responses
     while (turnResponse.responses.length > 0) {
-      await message.channel.send(turnResponse.responses[0].content);
+      switch (turnResponse.responses[0].type) {
+        case 'text': {
+          await message.channel.send(turnResponse.responses[0].content);
+          break;
+        }
+        case 'image': {
+          const attachment = new MessageAttachment(buffer);
+          await message.channel.send(attachment);
+          break;
+        }
+      }
       turnResponse.responses.shift();
     }
 
