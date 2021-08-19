@@ -46,11 +46,6 @@ Options:
     });
   }
 
-  saveState() { 
-    //convert game state into save object and save in db
-    this.db.set(`${this.id},state`, JSON.stringify(this.state));
-  }
-
   takeTurn(playerID, turn) { 
     if (this.state.over) {
       return {over: true, responses: [{type: 'text', content: 'The game is already over'}]};
