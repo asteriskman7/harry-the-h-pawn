@@ -57,7 +57,12 @@ exports.Game = class {
     this.db.set(`${this.id},state`, JSON.stringify(this.state));
   }
 
-  takeTurn(playerIndex, turn) { 
+  getInitialResponses() {
+    //return initial state msg/img
+    return {over: false, responses: [{ type: 'text', content: 'game start'}]};
+  }
+
+  takeTurn(playerID, turn) { 
     //return game over state and game state messages
     return {over: false, responses: [{ type: 'text', content: 'Turn taken'}]};
   }
