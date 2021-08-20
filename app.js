@@ -63,6 +63,23 @@ const gameMap = new Map();
 gameMap.set('numberGuess', NumberGuess);
 gameMap.set('tictactoe', TicTacToe);
 
+async function sendResponses(channel, responses) {
+  while (responses.length > 0) {
+    const response = responses.shift();
+    switch (response.type) {
+      case 'text': {
+        await channel.send(response.content);
+        break;
+      }
+      case 'image': {
+        const attachment = new MessageAttachment(response.content);
+        await channel.send({files: [attachment]});
+        break;
+      }
+    }
+  }
+}
+
 //setup handlers for commands in command channel
 const cmdHandlers = new Map();
 
@@ -89,12 +106,17 @@ cmdHandlers.set('new', {
       db.hset("gameInfo", threadChannel.id, JSON.stringify({name: gameName, users}));
       const gameArgs = args.match(/ (.*)/)[1];
       const game = new gameClass(threadChannel.id, db, users, gameArgs);
-      gameTurn.set(threadChannel.id, 0);
-      threadMap.set(threadChannel.id, game);
-      const mentionString = users.map( v => `<@${v}>` ).join` `;
-      const firstMsg = 'New game: ' + message.content.split` `.slice(2).join` ` +
-      `\nYour turn <@${users[0]}>!`;
-      threadChannel.send(firstMsg);
+
+      if (game.setupError.length === 0) { 
+        gameTurn.set(threadChannel.id, 0);
+        threadMap.set(threadChannel.id, game);
+        const mentionString = users.map( v => `<@${v}>` ).join` `;
+        const firstMsg = 'New game: ' + message.content.split` `.slice(2).join` `;
+        await threadChannel.send(firstMsg);
+        sendResponses(threadChannel, game.getInitialResponses().responses);
+      } else {
+        await threadChannel.send(game.setupError);
+      }
     }
   },
   help: `new <gameName> <playerList> ([gameOptions]): Start new game of gameName. 
@@ -185,22 +207,10 @@ client.on('messageCreate', async message => {
     const turnResponse = threadGame.takeTurn(message.author.id, cmdList.slice(1).join` `);
 
     //print responses
-    while (turnResponse.responses.length > 0) {
-      switch (turnResponse.responses[0].type) {
-        case 'text': {
-          await message.channel.send(turnResponse.responses[0].content);
-          break;
-        }
-        case 'image': {
-          const attachment = new MessageAttachment(buffer);
-          await message.channel.send(attachment);
-          break;
-        }
-      }
-      turnResponse.responses.shift();
-    }
+    await sendResponses(message.channel, turnResponse.responses);
 
     if (!turnResponse.over) {
+      //TODO: handle game over. delete game object?
     }
   }
 
