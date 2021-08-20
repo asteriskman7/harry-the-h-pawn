@@ -12,7 +12,7 @@ client.once('ready', () => {
   console.log('Ready!');
 });
 
-client.on('message', message => {
+client.on('messageCreate', message => {
   console.log(message.content);
 
   if (message.content === 'draw') {
@@ -47,7 +47,8 @@ client.on('message', message => {
     const buffer = canvas.toBuffer('image/png', {compressionLevel: 9});
 
     const attachment = new MessageAttachment(buffer);
-    message.channel.send(attachment);
+    //message.channel.send(attachment);
+    message.channel.send({files: [attachment]});
   }
 });
 
