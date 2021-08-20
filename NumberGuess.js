@@ -46,6 +46,13 @@ Options:
     });
   }
 
+  getInitialResponses() {
+    const nextPlayerID = this.state.users[this.state.playerTurn];
+    return {over: false, responses: [
+      {type: 'text', content: `Guess the number in [${this.state.gameOptions.minVal},${this.state.gameOptions.maxVal}]`},
+      {type: 'text', content: `Your turn <@${nextPlayerID}>`}]};
+  }
+
   takeTurn(playerID, turn) { 
     if (this.state.over) {
       return {over: true, responses: [{type: 'text', content: 'The game is already over'}]};
